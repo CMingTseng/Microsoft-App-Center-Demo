@@ -1,0 +1,138 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven { url 'https://maven.fabric.io/public' }
+    }
+
+    dependencies {
+        classpath 'io.fabric.tools:gradle:1.23.0'
+        classpath 'com.tencent.mm:AndResGuard-gradle-plugin:1.2.10'
+    }
+
+    System.getenv()
+    Map<String, String> map = System.getenv()
+    for (String key : map.keySet()) {
+        System.out.println("property\t" + key + "\t:\t" + map.get(key))
+    }
+    System.out.println("APPCENTER_BUILD_ID\t"  + System.getenv().containsKey("APPCENTER_BUILD_ID"));
+}
+
+
+repositories {
+    maven { url 'https://maven.fabric.io/public' }
+    maven { url 'https://jitpack.io' }
+    maven { url 'https://maven.google.com' }
+}
+
+apply plugin: 'com.android.application'
+apply plugin: 'io.fabric'
+apply plugin: 'AndResGuard'
+
+android {
+    compileSdkVersion 26
+    defaultConfig {
+        applicationId "com.suki.android"
+        minSdkVersion 21
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (System.getenv().containsKey("APPCENTER_BUILD_ID")) {
+            releaseResguard {
+                try {
+                    storeFile file("../.certs/keystore.jks")
+                    storePassword "${System.env.storePassword}"
+                    keyAlias "${System.env.keyAlias}"
+                    keyPassword "${System.env.keyPassword}"
+                    v2SigningEnabled false
+                } catch (ex) {
+                    throw new InvalidUserDataException(ex.toString())
+                }
+            }
+        } else {
+            releaseResguard {
+                try {
+                    storeFile file("../../keystoreAppCenter.keystore")
+                    storePassword "android"
+                    keyAlias "key0"
+                    keyPassword "android"
+                    v2SigningEnabled false
+                } catch (ex) {
+                    throw new InvalidUserDataException(ex.toString())
+                }
+            }
+        }
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            shrinkResources true
+            zipAlignEnabled true
+            pseudoLocalesEnabled true
+
+            ext.betaDistributionGroupAliases = "cd_android"
+            ext.betaDistributionNotifications = true
+            ext.betaDistributionReleaseNotes = "Released apk from Microsoft App Center CI"
+        }
+
+        releaseResguard {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            shrinkResources true
+            zipAlignEnabled true
+            pseudoLocalesEnabled true
+
+            signingConfig signingConfigs.releaseResguard
+            ext.betaDistributionGroupAliases = "cd_android"
+            ext.betaDistributionNotifications = true
+            ext.betaDistributionReleaseNotes = "Released apk from Microsoft App Center CI"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:26.1.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+    compile('com.crashlytics.sdk.android:crashlytics:2.8.0@aar') {
+        transitive = true;
+    }
+}
+
+
+andResGuard {
+    mappingFile = file("../resource_mapping_app-releaseResguard.txt")
+    use7zip = true
+    useSign = true
+    keepRoot = false
+    whiteList = [
+            "R.mipmap.ic_launcher",
+            "R.string.com.crashlytics.*",
+            "R.string.google_app_id",
+            "R.string.gcm_defaultSenderId",
+            "R.string.default_web_client_id",
+            "R.string.ga_trackingId",
+            "R.string.firebase_database_url",
+            "R.string.google_api_key",
+            "R.string.google_crash_reporting_api_key",
+    ]
+    compressFilePattern = [
+            "*.png",
+            "*.jpg",
+            "*.jpeg",
+            "*.gif",
+            "resources.arsc"
+    ]
+    sevenzip {
+        artifact = "com.tencent.mm:SevenZip:1.2.10"
+    }
+}
